@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# Env/secrets
+.env
+*.env.local
+
+# Data
+backend/app/static/*
+!backend/app/static/.gitkeep
+/data/
+
+# Node / frontend
+node_modules/
+
+# Editors/OS
+.DS_Store

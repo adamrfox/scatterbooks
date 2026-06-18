@@ -1,0 +1,14 @@
+services:
+  scatterbooks:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - scatterbooks_data:/data
+    environment:
+      - INITIAL_ADMIN_USERNAME=${INITIAL_ADMIN_USERNAME:-admin}
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:?set INITIAL_ADMIN_PASSWORD to bootstrap the first admin account}
+    restart: unless-stopped
+
+volumes:
+  scatterbooks_data:
