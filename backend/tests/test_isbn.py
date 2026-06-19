@@ -30,7 +30,7 @@ def ensure_reader(admin_client, username: str) -> TestClient:
     return login_as(username, "readerpw1")
 
 
-async def _miss(isbn: str) -> IsbnLookupResult | None:
+async def _miss(*args) -> IsbnLookupResult | None:
     return None
 
 
@@ -51,7 +51,7 @@ def test_open_library_hit_returns_title_and_author(admin_client, monkeypatch):
 
 
 def test_falls_back_to_google_books_when_open_library_misses(admin_client, monkeypatch):
-    async def fake_google_books(isbn: str) -> IsbnLookupResult | None:
+    async def fake_google_books(isbn: str, api_key: str | None) -> IsbnLookupResult | None:
         return IsbnLookupResult(isbn=isbn, title="Foundation", author="Isaac Asimov")
 
     monkeypatch.setattr(isbn_lookup, "_query_open_library", _miss)
@@ -124,20 +124,16 @@ class _FakeHttpResponse:
 
 
 def test_google_books_skipped_without_api_key(monkeypatch):
-    monkeypatch.setattr(isbn_lookup.settings, "google_books_api_key", None)
-
     async def fail_if_called(self, *args, **kwargs):
         raise AssertionError("should not make a network call without an API key")
 
     monkeypatch.setattr(httpx.AsyncClient, "get", fail_if_called)
 
-    result = asyncio.run(isbn_lookup._query_google_books("9780441013593"))
+    result = asyncio.run(isbn_lookup._query_google_books("9780441013593", None))
     assert result is None
 
 
 def test_google_books_rejects_fuzzy_match_with_different_isbn(monkeypatch):
-    monkeypatch.setattr(isbn_lookup.settings, "google_books_api_key", "fake-key-for-test")
-
     async def fake_get(self, url, params=None, **kwargs):
         return _FakeHttpResponse(
             200,
@@ -158,13 +154,11 @@ def test_google_books_rejects_fuzzy_match_with_different_isbn(monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
 
-    result = asyncio.run(isbn_lookup._query_google_books("0000000000000"))
+    result = asyncio.run(isbn_lookup._query_google_books("0000000000000", "fake-key-for-test"))
     assert result is None
 
 
 def test_google_books_accepts_matching_isbn(monkeypatch):
-    monkeypatch.setattr(isbn_lookup.settings, "google_books_api_key", "fake-key-for-test")
-
     async def fake_get(self, url, params=None, **kwargs):
         return _FakeHttpResponse(
             200,
@@ -185,7 +179,7 @@ def test_google_books_accepts_matching_isbn(monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
 
-    result = asyncio.run(isbn_lookup._query_google_books("9780441013593"))
+    result = asyncio.run(isbn_lookup._query_google_books("9780441013593", "fake-key-for-test"))
     assert result is not None
     assert result.title == "Dune"
     assert result.author == "Frank Herbert"

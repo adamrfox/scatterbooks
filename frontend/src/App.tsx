@@ -9,6 +9,7 @@ import { BookDetailPage } from './pages/BookDetailPage'
 import { BookFormPage } from './pages/BookFormPage'
 import { CategoryEditionManagementPage } from './pages/CategoryEditionManagementPage'
 import { UserManagementPage } from './pages/UserManagementPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { AccountPage } from './pages/AccountPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
@@ -91,6 +92,16 @@ function App() {
                 <RoleGuard>
                   <AppShell>
                     <AccountPage />
+                  </AppShell>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <RoleGuard minRole="admin">
+                  <AppShell>
+                    <SettingsPage />
                   </AppShell>
                 </RoleGuard>
               }

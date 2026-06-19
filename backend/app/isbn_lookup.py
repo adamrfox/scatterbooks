@@ -1,6 +1,5 @@
 import httpx
 
-from app.config import settings
 from app.schemas.isbn import IsbnLookupResult
 
 OPEN_LIBRARY_URL = "https://openlibrary.org/api/books"
@@ -28,14 +27,14 @@ async def _query_open_library(isbn: str) -> IsbnLookupResult | None:
     return IsbnLookupResult(isbn=isbn, title=title, author=author)
 
 
-async def _query_google_books(isbn: str) -> IsbnLookupResult | None:
+async def _query_google_books(isbn: str, api_key: str | None) -> IsbnLookupResult | None:
     # Unauthenticated Google Books requests share a heavily-throttled default
     # quota that is, in practice, frequently already exhausted -- skip this
-    # provider entirely unless the deployer configured their own (free) key.
-    if not settings.google_books_api_key:
+    # provider entirely unless an API key was resolved (database or env var).
+    if not api_key:
         return None
 
-    params = {"q": f"isbn:{isbn}", "key": settings.google_books_api_key}
+    params = {"q": f"isbn:{isbn}", "key": api_key}
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         response = await client.get(GOOGLE_BOOKS_URL, params=params)
     response.raise_for_status()
@@ -62,16 +61,21 @@ async def _query_google_books(isbn: str) -> IsbnLookupResult | None:
     return IsbnLookupResult(isbn=isbn, title=title, author=author)
 
 
-async def lookup_isbn(isbn: str) -> IsbnLookupResult | None:
+async def lookup_isbn(isbn: str, google_books_api_key: str | None) -> IsbnLookupResult | None:
     """Try Open Library first (no API key ever required), then Google Books
-    (only if a key is configured -- see _query_google_books). A provider
-    that errors or times out is skipped rather than failing the lookup.
+    (only if google_books_api_key is set -- see _query_google_books), short-
+    circuiting as soon as one provider has a match. A provider that errors
+    or times out is skipped rather than failing the whole lookup.
     """
-    for query in (_query_open_library, _query_google_books):
-        try:
-            result = await query(isbn)
-        except httpx.HTTPError:
-            continue
-        if result is not None:
-            return result
-    return None
+    try:
+        result = await _query_open_library(isbn)
+    except httpx.HTTPError:
+        result = None
+    if result is not None:
+        return result
+
+    try:
+        result = await _query_google_books(isbn, google_books_api_key)
+    except httpx.HTTPError:
+        result = None
+    return result

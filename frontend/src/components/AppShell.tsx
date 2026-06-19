@@ -13,6 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Library', path: '/' },
   { label: 'Categories & Editions', path: '/categories', minRole: 'librarian' },
   { label: 'Users', path: '/admin/users', minRole: 'admin' },
+  { label: 'Settings', path: '/admin/settings', minRole: 'admin' },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
