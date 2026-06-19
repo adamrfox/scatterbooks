@@ -8,6 +8,10 @@ services:
     environment:
       - INITIAL_ADMIN_USERNAME=${INITIAL_ADMIN_USERNAME:-admin}
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:?set INITIAL_ADMIN_PASSWORD to bootstrap the first admin account}
+      - SESSION_TTL_DAYS=${SESSION_TTL_DAYS:-14}
+      - SESSION_MAX_TTL_DAYS=${SESSION_MAX_TTL_DAYS:-90}
+      - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-15}
+      - GOOGLE_BOOKS_API_KEY=${GOOGLE_BOOKS_API_KEY:-}
     restart: unless-stopped
 
 volumes:

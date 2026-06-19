@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     session_ttl_days: int = 14
     session_max_ttl_days: int = 90
     max_upload_mb: int = 15
+    google_books_api_key: str | None = None
 
     @property
     def database_path(self) -> str:

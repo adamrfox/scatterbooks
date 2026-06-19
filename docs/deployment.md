@@ -26,6 +26,31 @@ Or with the included `docker-compose.yml`:
 INITIAL_ADMIN_PASSWORD=<choose-a-strong-password> docker compose up -d --build
 ```
 
+That inline `VAR=value` form only lasts for that one command — it doesn't
+persist across reboots, server restarts, or the next time you happen to run
+`docker compose up` from a fresh shell. To make environment variables stick
+permanently, put them in a **`.env` file next to `docker-compose.yml`**
+(copy `.env.example` to `.env` and fill it in). Docker Compose reads that
+file automatically on every `docker compose` invocation — no need to
+`export` anything or pass `-e` flags by hand:
+
+```sh
+cp .env.example .env
+# edit .env: set INITIAL_ADMIN_PASSWORD, etc.
+docker compose up -d --build
+```
+
+`.env` is git-ignored on purpose (it holds the admin password) — keep it on
+the host only, not in version control. This is unrelated to the app's own
+`pydantic-settings` `.env`-file support (which only matters if you run
+`uvicorn` directly on bare metal from `backend/`); in the Docker/Compose
+path, Compose's `.env` file is what actually injects these as container
+environment variables.
+
+If you're running `docker run` directly instead of Compose, the equivalent
+is `--env-file path/to/.env`, or just keep using explicit `-e` flags in
+whatever script/systemd unit launches the container.
+
 On first startup (when the `users` table is empty), the app creates the
 initial admin account from `INITIAL_ADMIN_USERNAME`/`INITIAL_ADMIN_PASSWORD`.
 On every startup, it also runs any pending Alembic migrations automatically
@@ -43,12 +68,28 @@ be locked out until you set them and restart).
 | `SESSION_TTL_DAYS` | No | `14` | Sliding session expiry window |
 | `SESSION_MAX_TTL_DAYS` | No | `90` | Absolute cap on session lifetime regardless of activity |
 | `MAX_UPLOAD_MB` | No | `15` | Per-image upload size limit |
+| `GOOGLE_BOOKS_API_KEY` | No | _(none)_ | Enables Google Books as a fallback for the "scan ISBN" lookup (see below) |
 
 Once the admin account exists, `INITIAL_ADMIN_USERNAME`/`PASSWORD` are
 ignored on subsequent restarts (the bootstrap only fires when there are zero
 users) — they don't need to be removed, but they also won't reset the
 account's password if you change them later. Use the in-app "Reset password"
 action (as admin) or the self-service password change instead.
+
+### ISBN lookup (scan-to-fill)
+
+When adding a book, librarians can scan its ISBN barcode (or type it in) to
+auto-fill the title/author fields. This always tries **Open Library** first
+— free, no API key, no signup. It optionally falls back to **Google Books**
+if `GOOGLE_BOOKS_API_KEY` is set; without a key, Google Books is skipped
+entirely rather than attempted, because unauthenticated requests to that API
+share a heavily-throttled anonymous quota that is, in practice, often
+already exhausted (you'd just get failures, not a useful fallback). A free
+key takes a few minutes to generate from the Google Cloud Console (enable
+the "Books API" on a project, create an API key) and raises that fallback's
+quota substantially. Neither provider is required for the rest of the app
+to work — if both miss (or Google Books is unconfigured), the librarian
+just types the title/author manually, same as before this feature existed.
 
 ## Data persistence
 

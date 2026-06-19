@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 
 from app.bootstrap import bootstrap_admin
 from app.database import SessionLocal
-from app.routers import auth, books, categories, editions, images, users
+from app.routers import auth, books, categories, editions, images, isbn, users
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BACKEND_DIR / "app" / "static"
@@ -39,6 +39,7 @@ app.include_router(books.router)
 app.include_router(categories.router)
 app.include_router(editions.router)
 app.include_router(images.router)
+app.include_router(isbn.router)
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

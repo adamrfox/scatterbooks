@@ -10,7 +10,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Books', path: '/' },
+  { label: 'Library', path: '/' },
   { label: 'Categories & Editions', path: '/categories', minRole: 'librarian' },
   { label: 'Users', path: '/admin/users', minRole: 'admin' },
 ]

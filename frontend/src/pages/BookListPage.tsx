@@ -47,7 +47,7 @@ export function BookListPage() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Books</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Library</h1>
         {canEdit && (
           <Link
             to="/books/new"
