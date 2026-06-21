@@ -5,6 +5,7 @@ interface PhotoCaptureButtonsProps {
   remaining: number
   maxCount: number
   onFilesSelected: (files: File[]) => void
+  helperText?: string
 }
 
 export function PhotoCaptureButtons({
@@ -12,6 +13,7 @@ export function PhotoCaptureButtons({
   remaining,
   maxCount,
   onFilesSelected,
+  helperText,
 }: PhotoCaptureButtonsProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const libraryInputRef = useRef<HTMLInputElement>(null)
@@ -64,9 +66,10 @@ export function PhotoCaptureButtons({
         />
       </div>
       <p className="mt-1 text-xs text-gray-500">
-        {disabled
-          ? `Maximum of ${maxCount} photos reached.`
-          : `${remaining} of ${maxCount} photo slots remaining.`}
+        {helperText ??
+          (disabled
+            ? `Maximum of ${maxCount} photos reached.`
+            : `${remaining} of ${maxCount} photo slots remaining.`)}
       </p>
     </div>
   )

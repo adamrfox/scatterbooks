@@ -5,8 +5,10 @@ import { createBook, getBook, updateBook } from '../api/books'
 import { createCategory, listCategories } from '../api/categories'
 import { createEdition, listEditions } from '../api/editions'
 import { listBookImages, uploadBookImage } from '../api/images'
+import { getSettings } from '../api/settings'
 import { ApiError } from '../api/client'
 import { ComboboxWithAdd } from '../components/ComboboxWithAdd'
+import { IdentifyFromPhotoButton } from '../components/IdentifyFromPhotoButton'
 import { ImageGallery } from '../components/ImageGallery'
 import { ImagePicker } from '../components/ImagePicker'
 import { ScanIsbnButton } from '../components/ScanIsbnButton'
@@ -52,6 +54,7 @@ export function BookFormPage() {
 
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: listCategories })
   const { data: editions = [] } = useQuery({ queryKey: ['editions'], queryFn: listEditions })
+  const { data: appSettings } = useQuery({ queryKey: ['settings'], queryFn: getSettings })
 
   const { data: existingImages = [] } = useQuery({
     queryKey: ['book-images', savedBookId],
@@ -166,17 +169,28 @@ export function BookFormPage() {
     saveMutation.mutate()
   }
 
+  function handleIdentified({
+    title: foundTitle,
+    author: foundAuthor,
+  }: {
+    title: string | null
+    author: string | null
+  }) {
+    if (foundTitle) setTitle(foundTitle)
+    if (foundAuthor) setAuthor(foundAuthor)
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-4 text-xl font-semibold text-gray-900">
         {isEdit ? 'Edit book' : 'Add a book'}
       </h1>
-      <ScanIsbnButton
-        onFound={({ title: foundTitle, author: foundAuthor }) => {
-          if (foundTitle) setTitle(foundTitle)
-          if (foundAuthor) setAuthor(foundAuthor)
-        }}
-      />
+      <div className="flex flex-wrap gap-2">
+        <ScanIsbnButton onFound={handleIdentified} />
+        {appSettings?.anthropic_api_key_configured && (
+          <IdentifyFromPhotoButton onFound={handleIdentified} />
+        )}
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700">

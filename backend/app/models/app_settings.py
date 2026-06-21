@@ -8,12 +8,15 @@ from app.database import Base
 
 SINGLETON_ID = 1
 
+KeySource = Literal["database", "environment", "none"]
+
 
 class AppSettings(Base):
     __tablename__ = "app_settings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     google_books_api_key: Mapped[str | None] = mapped_column(String(255))
+    anthropic_api_key: Mapped[str | None] = mapped_column(String(255))
 
 
 def get_app_settings(db: Session) -> AppSettings:
@@ -28,13 +31,21 @@ def get_app_settings(db: Session) -> AppSettings:
     return row
 
 
-def resolve_google_books_api_key(
-    db: Session,
-) -> tuple[str | None, Literal["database", "environment", "none"]]:
+def _resolve(db_value: str | None, env_value: str | None) -> tuple[str | None, KeySource]:
+    if db_value:
+        return db_value, "database"
+    if env_value:
+        return env_value, "environment"
+    return None, "none"
+
+
+def resolve_google_books_api_key(db: Session) -> tuple[str | None, KeySource]:
     """Database value wins; falls back to the GOOGLE_BOOKS_API_KEY env var."""
     row = get_app_settings(db)
-    if row.google_books_api_key:
-        return row.google_books_api_key, "database"
-    if env_settings.google_books_api_key:
-        return env_settings.google_books_api_key, "environment"
-    return None, "none"
+    return _resolve(row.google_books_api_key, env_settings.google_books_api_key)
+
+
+def resolve_anthropic_api_key(db: Session) -> tuple[str | None, KeySource]:
+    """Database value wins; falls back to the ANTHROPIC_API_KEY env var."""
+    row = get_app_settings(db)
+    return _resolve(row.anthropic_api_key, env_settings.anthropic_api_key)
