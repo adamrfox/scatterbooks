@@ -14,6 +14,8 @@ import { ImagePicker } from '../components/ImagePicker'
 import { ScanIsbnButton } from '../components/ScanIsbnButton'
 import { StagedPhotoPicker, type StagedImage } from '../components/StagedPhotoPicker'
 
+const MAX_IMAGES = 5
+
 export function BookFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = id !== undefined
@@ -26,6 +28,7 @@ export function BookFormPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [editionId, setEditionId] = useState<number | null>(null)
   const [notes, setNotes] = useState('')
+  const [year, setYear] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [savedBookId, setSavedBookId] = useState<number | null>(bookId)
   const [stagedImages, setStagedImages] = useState<StagedImage[]>([])
@@ -72,6 +75,7 @@ export function BookFormPage() {
       setCategoryId(existingBook.category_id)
       setEditionId(existingBook.edition_id)
       setNotes(existingBook.notes ?? '')
+      setYear(existingBook.year != null ? String(existingBook.year) : '')
     }
   }, [existingBook])
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -127,6 +131,7 @@ export function BookFormPage() {
         category_id: categoryId,
         edition_id: editionId,
         notes: notes.trim() ? notes.trim() : null,
+        year: year.trim() ? Number(year.trim()) : null,
       }
       return savedBookId ? updateBook(savedBookId, input) : createBook(input)
     },
@@ -152,12 +157,17 @@ export function BookFormPage() {
           clearStagedImages()
           queryClient.invalidateQueries({ queryKey: ['book-images', book.id] })
           if (uploadErrors.length > 0) {
+            // Stay on the edit page so the error (and a way to retry the
+            // failed photos via the real photo picker) is visible, instead
+            // of navigating away from it unseen.
             setError(`Book saved, but some photos failed to upload: ${uploadErrors.join('; ')}`)
+            navigate(`/books/${book.id}/edit`, { replace: true })
+            return
           }
         }
-
-        navigate(`/books/${book.id}/edit`, { replace: true })
       }
+
+      navigate('/')
     },
     onError: (err) => {
       setError(err instanceof ApiError ? String(err.detail) : 'Could not save book.')
@@ -180,6 +190,23 @@ export function BookFormPage() {
     if (foundAuthor) setAuthor(foundAuthor)
   }
 
+  async function handlePhotoIdentified(file: File) {
+    if (savedBookId) {
+      try {
+        await uploadBookImage(savedBookId, file)
+        queryClient.invalidateQueries({ queryKey: ['book-images', savedBookId] })
+      } catch (uploadError) {
+        const message =
+          uploadError instanceof ApiError ? String(uploadError.detail) : 'upload failed'
+        setError(`Identified the book, but the photo could not be added: ${message}`)
+      }
+    } else if (stagedImages.length < MAX_IMAGES) {
+      addStagedImages([file])
+    } else {
+      setError(`Identified the book, but the photo wasn't added -- maximum of ${MAX_IMAGES} photos reached.`)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-4 text-xl font-semibold text-gray-900">
@@ -188,7 +215,7 @@ export function BookFormPage() {
       <div className="flex flex-wrap gap-2">
         <ScanIsbnButton onFound={handleIdentified} />
         {appSettings?.anthropic_api_key_configured && (
-          <IdentifyFromPhotoButton onFound={handleIdentified} />
+          <IdentifyFromPhotoButton onFound={handleIdentified} onPhotoAccepted={handlePhotoIdentified} />
         )}
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -216,6 +243,19 @@ export function BookFormPage() {
             value={author}
             onChange={(event) => setAuthor(event.target.value)}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
+        <div>
+          <label htmlFor="year" className="block text-sm font-medium text-gray-700">
+            Year
+          </label>
+          <input
+            id="year"
+            type="number"
+            inputMode="numeric"
+            value={year}
+            onChange={(event) => setYear(event.target.value)}
+            className="mt-1 block w-32 rounded-md border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
 

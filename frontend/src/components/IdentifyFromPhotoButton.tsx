@@ -5,9 +5,10 @@ import { ApiError } from '../api/client'
 
 interface IdentifyFromPhotoButtonProps {
   onFound: (result: { title: string | null; author: string | null }) => void
+  onPhotoAccepted: (file: File) => void
 }
 
-export function IdentifyFromPhotoButton({ onFound }: IdentifyFromPhotoButtonProps) {
+export function IdentifyFromPhotoButton({ onFound, onPhotoAccepted }: IdentifyFromPhotoButtonProps) {
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState<'idle' | 'identifying' | 'not-found'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +31,10 @@ export function IdentifyFromPhotoButton({ onFound }: IdentifyFromPhotoButtonProp
         setStatus('not-found')
         return
       }
+      // A successful identification means this is a real photo of the book's
+      // cover -- keep it as one of the book's photos, not just a throwaway
+      // input to the lookup.
+      onPhotoAccepted(file)
       onFound({ title: result.title, author: result.author })
       closeModal()
     } catch (err) {
@@ -60,7 +65,9 @@ export function IdentifyFromPhotoButton({ onFound }: IdentifyFromPhotoButtonProp
 
             <p className="mb-3 text-sm text-gray-500">
               Take or choose a photo of the cover. This sends the photo to Claude (Anthropic) to
-              suggest a title and author -- always double-check before saving.
+              suggest a title and author -- always double-check before saving. If it's
+              recognized, the photo is kept as one of the book's photos (you can remove it
+              later).
             </p>
 
             <PhotoCaptureButtons

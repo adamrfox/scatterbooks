@@ -34,6 +34,7 @@ export interface BookInput {
   category_id: number | null
   edition_id: number | null
   notes: string | null
+  year: number | null
 }
 
 export function createBook(input: BookInput): Promise<Book> {

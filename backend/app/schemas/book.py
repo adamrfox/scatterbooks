@@ -12,6 +12,7 @@ class BookCreate(BaseModel):
     category_id: int | None = None
     edition_id: int | None = None
     notes: str | None = None
+    year: int | None = None
 
 
 class BookUpdate(BaseModel):
@@ -20,6 +21,7 @@ class BookUpdate(BaseModel):
     category_id: int | None = None
     edition_id: int | None = None
     notes: str | None = None
+    year: int | None = None
 
 
 class BookOut(BaseModel):
@@ -32,6 +34,7 @@ class BookOut(BaseModel):
     edition: EditionOut | None
     cover_image_id: int | None
     notes: str | None
+    year: int | None
     created_by: int | None
     created_at: datetime
     updated_at: datetime

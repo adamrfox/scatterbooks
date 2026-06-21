@@ -30,6 +30,7 @@ export interface Book {
   edition: Edition | null
   cover_image_id: number | null
   notes: string | null
+  year: number | null
   created_by: number | null
   created_at: string
   updated_at: string

@@ -105,6 +105,7 @@ def create_book(
         category_id=body.category_id,
         edition_id=body.edition_id,
         notes=body.notes,
+        year=body.year,
         created_by=current_user.id,
     )
     db.add(book)

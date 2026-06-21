@@ -23,7 +23,10 @@ export function BookCard({ book }: { book: Book }) {
       </div>
       <div className="flex flex-col justify-center md:justify-start">
         <span className="font-medium text-gray-900">{book.title}</span>
-        <span className="text-sm text-gray-500">{book.author}</span>
+        <span className="text-sm text-gray-500">
+          {book.author}
+          {book.year != null && <span className="text-gray-400"> &middot; {book.year}</span>}
+        </span>
         {book.category && (
           <span className="mt-1 inline-block w-fit rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
             {book.category.name}

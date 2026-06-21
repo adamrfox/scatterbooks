@@ -77,6 +77,7 @@ def test_create_get_update_delete_book(admin_client):
                 "category_id": category_id,
                 "edition_id": edition_id,
                 "notes": "First book in the trilogy",
+                "year": 1954,
             },
         )
         assert create.status_code == 201, create.text
@@ -84,6 +85,7 @@ def test_create_get_update_delete_book(admin_client):
         assert book["title"] == "The Fellowship of the Ring"
         assert book["category"]["name"] == "Fantasy"
         assert book["edition"]["name"] == "Paperback"
+        assert book["year"] == 1954
         book_id = book["id"]
 
         fetched = librarian_client.get(f"/api/books/{book_id}")
@@ -105,6 +107,27 @@ def test_create_get_update_delete_book(admin_client):
 
         missing = librarian_client.get(f"/api/books/{book_id}")
         assert missing.status_code == 404
+    finally:
+        librarian_client.__exit__(None, None, None)
+
+
+def test_year_is_optional_and_clearable(admin_client):
+    librarian_client = ensure_librarian(admin_client)
+    try:
+        create = librarian_client.post(
+            "/api/books", json={"title": "No Year Given", "author": "Author"}
+        )
+        assert create.status_code == 201, create.text
+        assert create.json()["year"] is None
+        book_id = create.json()["id"]
+
+        set_year = librarian_client.patch(f"/api/books/{book_id}", json={"year": 1999})
+        assert set_year.status_code == 200, set_year.text
+        assert set_year.json()["year"] == 1999
+
+        cleared = librarian_client.patch(f"/api/books/{book_id}", json={"year": None})
+        assert cleared.status_code == 200, cleared.text
+        assert cleared.json()["year"] is None
     finally:
         librarian_client.__exit__(None, None, None)
 
