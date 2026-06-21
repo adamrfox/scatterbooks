@@ -11,6 +11,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Library', path: '/' },
+  { label: 'Wish Lists', path: '/wish-lists' },
   { label: 'Categories & Editions', path: '/categories', minRole: 'librarian' },
   { label: 'Users', path: '/admin/users', minRole: 'admin' },
   { label: 'Settings', path: '/admin/settings', minRole: 'admin' },

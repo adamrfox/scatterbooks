@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { deleteBook, getBook } from '../api/books'
+import { bookImageFullUrl, bookImageThumbUrl, deleteBookImage, listBookImages, reorderBookImage } from '../api/images'
 import { ImageGallery } from '../components/ImageGallery'
 import { useAuth } from '../context/AuthContext'
 import { roleAtLeast } from '../types'
@@ -88,7 +89,16 @@ export function BookDetailPage() {
 
       <div className="mt-6">
         <h2 className="mb-2 text-sm font-medium text-gray-700">Photos</h2>
-        <ImageGallery bookId={book.id} canEdit={canEdit} />
+        <ImageGallery
+          queryKey={['book-images', book.id]}
+          listImages={() => listBookImages(book.id)}
+          deleteImage={(imageId) => deleteBookImage(book.id, imageId)}
+          reorderImage={(imageId, position) => reorderBookImage(book.id, imageId, position)}
+          thumbUrl={(imageId) => bookImageThumbUrl(book.id, imageId)}
+          fullUrl={(imageId) => bookImageFullUrl(book.id, imageId)}
+          onChanged={() => queryClient.invalidateQueries({ queryKey: ['book', book.id] })}
+          canEdit={canEdit}
+        />
       </div>
     </div>
   )

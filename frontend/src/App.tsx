@@ -11,6 +11,10 @@ import { CategoryEditionManagementPage } from './pages/CategoryEditionManagement
 import { UserManagementPage } from './pages/UserManagementPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { AccountPage } from './pages/AccountPage'
+import { WishListsPage } from './pages/WishListsPage'
+import { WishListDetailPage } from './pages/WishListDetailPage'
+import { WishListEntryDetailPage } from './pages/WishListEntryDetailPage'
+import { WishListEntryFormPage } from './pages/WishListEntryFormPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 const queryClient = new QueryClient({
@@ -102,6 +106,56 @@ function App() {
                 <RoleGuard minRole="admin">
                   <AppShell>
                     <SettingsPage />
+                  </AppShell>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/wish-lists"
+              element={
+                <RoleGuard>
+                  <AppShell>
+                    <WishListsPage />
+                  </AppShell>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/wish-lists/:id"
+              element={
+                <RoleGuard>
+                  <AppShell>
+                    <WishListDetailPage />
+                  </AppShell>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/wish-lists/:id/entries/new"
+              element={
+                <RoleGuard minRole="librarian">
+                  <AppShell>
+                    <WishListEntryFormPage />
+                  </AppShell>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/wish-lists/:id/entries/:entryId"
+              element={
+                <RoleGuard>
+                  <AppShell>
+                    <WishListEntryDetailPage />
+                  </AppShell>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="/wish-lists/:id/entries/:entryId/edit"
+              element={
+                <RoleGuard minRole="librarian">
+                  <AppShell>
+                    <WishListEntryFormPage />
                   </AppShell>
                 </RoleGuard>
               }

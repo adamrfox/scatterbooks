@@ -1,25 +1,21 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { uploadBookImage } from '../api/images'
+import { useMutation } from '@tanstack/react-query'
 import { ApiError } from '../api/client'
 import { PhotoCaptureButtons } from './PhotoCaptureButtons'
 
 interface ImagePickerProps {
-  bookId: number
   currentCount: number
   maxCount?: number
+  upload: (file: File) => Promise<unknown>
+  onUploaded: () => void
 }
 
-export function ImagePicker({ bookId, currentCount, maxCount = 5 }: ImagePickerProps) {
-  const queryClient = useQueryClient()
+export function ImagePicker({ currentCount, maxCount = 5, upload, onUploaded }: ImagePickerProps) {
   const [errors, setErrors] = useState<string[]>([])
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => uploadBookImage(bookId, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['book-images', bookId] })
-      queryClient.invalidateQueries({ queryKey: ['book', bookId] })
-    },
+    mutationFn: upload,
+    onSuccess: onUploaded,
   })
 
   const remaining = maxCount - currentCount

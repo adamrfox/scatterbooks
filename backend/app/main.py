@@ -18,6 +18,8 @@ from app.routers import (
     isbn,
     settings,
     users,
+    wish_list_entry_images,
+    wish_lists,
 )
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -52,6 +54,8 @@ app.include_router(images.router)
 app.include_router(isbn.router)
 app.include_router(settings.router)
 app.include_router(cover_identification.router)
+app.include_router(wish_lists.router)
+app.include_router(wish_list_entry_images.router)
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

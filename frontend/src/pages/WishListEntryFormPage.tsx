@@ -1,34 +1,32 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createBook, getBook, updateBook } from '../api/books'
 import { createCategory, listCategories } from '../api/categories'
 import { createEdition, listEditions } from '../api/editions'
+import { createWishListEntry, getWishList, getWishListEntry, updateWishListEntry } from '../api/wishLists'
 import {
-  bookImageFullUrl,
-  bookImageThumbUrl,
-  deleteBookImage,
-  listBookImages,
-  reorderBookImage,
-  uploadBookImage,
-} from '../api/images'
-import { getSettings } from '../api/settings'
+  deleteWishListEntryImage,
+  listWishListEntryImages,
+  reorderWishListEntryImage,
+  uploadWishListEntryImage,
+  wishListEntryImageFullUrl,
+  wishListEntryImageThumbUrl,
+} from '../api/wishListEntryImages'
 import { ApiError } from '../api/client'
 import { ComboboxWithAdd } from '../components/ComboboxWithAdd'
-import { IdentifyFromPhotoButton } from '../components/IdentifyFromPhotoButton'
 import { ImageGallery } from '../components/ImageGallery'
 import { ImagePicker } from '../components/ImagePicker'
-import { ScanIsbnButton } from '../components/ScanIsbnButton'
 import { StagedPhotoPicker, type StagedImage } from '../components/StagedPhotoPicker'
+import { useAuth } from '../context/AuthContext'
 
-const MAX_IMAGES = 5
-
-export function BookFormPage() {
-  const { id } = useParams<{ id: string }>()
-  const isEdit = id !== undefined
-  const bookId = isEdit ? Number(id) : null
+export function WishListEntryFormPage() {
+  const { id, entryId } = useParams<{ id: string; entryId: string }>()
+  const wishListId = Number(id)
+  const isEdit = entryId !== undefined
+  const entryIdParam = isEdit ? Number(entryId) : null
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
@@ -37,13 +35,9 @@ export function BookFormPage() {
   const [notes, setNotes] = useState('')
   const [year, setYear] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [savedBookId, setSavedBookId] = useState<number | null>(bookId)
+  const [savedEntryId, setSavedEntryId] = useState<number | null>(entryIdParam)
   const [stagedImages, setStagedImages] = useState<StagedImage[]>([])
 
-  // Staged photo preview URLs are created with URL.createObjectURL and must
-  // be revoked when no longer needed. A ref (rather than the state directly)
-  // lets the unmount cleanup below see the *latest* staged images instead of
-  // whatever was staged at mount time.
   const stagedImagesRef = useRef<StagedImage[]>(stagedImages)
 
   useEffect(() => {
@@ -56,35 +50,44 @@ export function BookFormPage() {
     }
   }, [])
 
-  const { data: existingBook } = useQuery({
-    queryKey: ['book', bookId],
-    queryFn: () => getBook(bookId as number),
-    enabled: isEdit && bookId !== null,
+  const {
+    data: wishList,
+    isLoading: wishListLoading,
+    isError: wishListError,
+  } = useQuery({
+    queryKey: ['wish-list', wishListId],
+    queryFn: () => getWishList(wishListId),
+    enabled: Number.isFinite(wishListId),
+  })
+
+  const { data: existingEntry } = useQuery({
+    queryKey: ['wish-list-entry', wishListId, entryIdParam],
+    queryFn: () => getWishListEntry(wishListId, entryIdParam as number),
+    enabled: isEdit && entryIdParam !== null,
   })
 
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: listCategories })
   const { data: editions = [] } = useQuery({ queryKey: ['editions'], queryFn: listEditions })
-  const { data: appSettings } = useQuery({ queryKey: ['settings'], queryFn: getSettings })
 
   const { data: existingImages = [] } = useQuery({
-    queryKey: ['book-images', savedBookId],
-    queryFn: () => listBookImages(savedBookId as number),
-    enabled: savedBookId !== null,
+    queryKey: ['wish-list-entry-images', wishListId, savedEntryId],
+    queryFn: () => listWishListEntryImages(wishListId, savedEntryId as number),
+    enabled: savedEntryId !== null,
   })
 
   // One-time sync of fetched record into editable local form state, not a
-  // cascading update -- existingBook only changes once the query resolves.
+  // cascading update -- existingEntry only changes once the query resolves.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (existingBook) {
-      setTitle(existingBook.title)
-      setAuthor(existingBook.author)
-      setCategoryId(existingBook.category_id)
-      setEditionId(existingBook.edition_id)
-      setNotes(existingBook.notes ?? '')
-      setYear(existingBook.year != null ? String(existingBook.year) : '')
+    if (existingEntry) {
+      setTitle(existingEntry.title)
+      setAuthor(existingEntry.author)
+      setCategoryId(existingEntry.category_id)
+      setEditionId(existingEntry.edition_id)
+      setNotes(existingEntry.notes ?? '')
+      setYear(existingEntry.year != null ? String(existingEntry.year) : '')
     }
-  }, [existingBook])
+  }, [existingEntry])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const createCategoryMutation = useMutation({
@@ -140,21 +143,23 @@ export function BookFormPage() {
         notes: notes.trim() ? notes.trim() : null,
         year: year.trim() ? Number(year.trim()) : null,
       }
-      return savedBookId ? updateBook(savedBookId, input) : createBook(input)
+      return savedEntryId
+        ? updateWishListEntry(wishListId, savedEntryId, input)
+        : createWishListEntry(wishListId, input)
     },
-    onSuccess: async (book) => {
-      queryClient.invalidateQueries({ queryKey: ['books'] })
-      queryClient.invalidateQueries({ queryKey: ['book', book.id] })
+    onSuccess: async (entry) => {
+      queryClient.invalidateQueries({ queryKey: ['wish-list-entries', wishListId] })
+      queryClient.invalidateQueries({ queryKey: ['wish-list-entry', wishListId, entry.id] })
       setError(null)
 
       if (!isEdit) {
-        setSavedBookId(book.id)
+        setSavedEntryId(entry.id)
 
         if (stagedImages.length > 0) {
           const uploadErrors: string[] = []
           for (const staged of stagedImages) {
             try {
-              await uploadBookImage(book.id, staged.file)
+              await uploadWishListEntryImage(wishListId, entry.id, staged.file)
             } catch (uploadError) {
               const message =
                 uploadError instanceof ApiError ? String(uploadError.detail) : 'upload failed'
@@ -162,22 +167,21 @@ export function BookFormPage() {
             }
           }
           clearStagedImages()
-          queryClient.invalidateQueries({ queryKey: ['book-images', book.id] })
+          queryClient.invalidateQueries({
+            queryKey: ['wish-list-entry-images', wishListId, entry.id],
+          })
           if (uploadErrors.length > 0) {
-            // Stay on the edit page so the error (and a way to retry the
-            // failed photos via the real photo picker) is visible, instead
-            // of navigating away from it unseen.
-            setError(`Book saved, but some photos failed to upload: ${uploadErrors.join('; ')}`)
-            navigate(`/books/${book.id}/edit`, { replace: true })
+            setError(`Saved, but some photos failed to upload: ${uploadErrors.join('; ')}`)
+            navigate(`/wish-lists/${wishListId}/entries/${entry.id}/edit`, { replace: true })
             return
           }
         }
       }
 
-      navigate('/')
+      navigate(`/wish-lists/${wishListId}`)
     },
     onError: (err) => {
-      setError(err instanceof ApiError ? String(err.detail) : 'Could not save book.')
+      setError(err instanceof ApiError ? String(err.detail) : 'Could not save.')
     },
   })
 
@@ -186,45 +190,20 @@ export function BookFormPage() {
     saveMutation.mutate()
   }
 
-  function handleIdentified({
-    title: foundTitle,
-    author: foundAuthor,
-  }: {
-    title: string | null
-    author: string | null
-  }) {
-    if (foundTitle) setTitle(foundTitle)
-    if (foundAuthor) setAuthor(foundAuthor)
-  }
+  if (wishListLoading) return <p className="text-gray-500">Loading...</p>
 
-  async function handlePhotoIdentified(file: File) {
-    if (savedBookId) {
-      try {
-        await uploadBookImage(savedBookId, file)
-        queryClient.invalidateQueries({ queryKey: ['book-images', savedBookId] })
-      } catch (uploadError) {
-        const message =
-          uploadError instanceof ApiError ? String(uploadError.detail) : 'upload failed'
-        setError(`Identified the book, but the photo could not be added: ${message}`)
-      }
-    } else if (stagedImages.length < MAX_IMAGES) {
-      addStagedImages([file])
-    } else {
-      setError(`Identified the book, but the photo wasn't added -- maximum of ${MAX_IMAGES} photos reached.`)
-    }
+  const canEdit = !!user && !!wishList && (user.role === 'admin' || wishList.owner_id === user.id)
+  if (wishListError || !wishList || !canEdit) {
+    return (
+      <p className="p-8 text-center text-gray-500">You don&apos;t have permission to view this page.</p>
+    )
   }
 
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-4 text-xl font-semibold text-gray-900">
-        {isEdit ? 'Edit book' : 'Add a book'}
+        {isEdit ? 'Edit wish list entry' : `Add to ${wishList?.name ?? 'wish list'}`}
       </h1>
-      <div className="flex flex-wrap gap-2">
-        <ScanIsbnButton onFound={handleIdentified} />
-        {appSettings?.anthropic_api_key_configured && (
-          <IdentifyFromPhotoButton onFound={handleIdentified} onPhotoAccepted={handlePhotoIdentified} />
-        )}
-      </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700">
@@ -310,10 +289,10 @@ export function BookFormPage() {
           >
             {saveMutation.isPending ? 'Saving...' : 'Save'}
           </button>
-          {savedBookId && (
+          {savedEntryId && (
             <button
               type="button"
-              onClick={() => navigate(`/books/${savedBookId}`)}
+              onClick={() => navigate(`/wish-lists/${wishListId}/entries/${savedEntryId}`)}
               className="rounded-md border border-gray-300 px-4 py-2 text-base text-gray-700 hover:bg-gray-50"
             >
               Done
@@ -324,25 +303,35 @@ export function BookFormPage() {
 
       <div className="mt-8">
         <h2 className="mb-2 text-sm font-medium text-gray-700">Photos</h2>
-        {savedBookId ? (
+        {savedEntryId ? (
           <>
             <ImagePicker
               currentCount={existingImages.length}
-              upload={(file) => uploadBookImage(savedBookId, file)}
+              upload={(file) => uploadWishListEntryImage(wishListId, savedEntryId, file)}
               onUploaded={() => {
-                queryClient.invalidateQueries({ queryKey: ['book-images', savedBookId] })
-                queryClient.invalidateQueries({ queryKey: ['book', savedBookId] })
+                queryClient.invalidateQueries({
+                  queryKey: ['wish-list-entry-images', wishListId, savedEntryId],
+                })
+                queryClient.invalidateQueries({
+                  queryKey: ['wish-list-entry', wishListId, savedEntryId],
+                })
               }}
             />
             <div className="mt-3">
               <ImageGallery
-                queryKey={['book-images', savedBookId]}
-                listImages={() => listBookImages(savedBookId)}
-                deleteImage={(imageId) => deleteBookImage(savedBookId, imageId)}
-                reorderImage={(imageId, position) => reorderBookImage(savedBookId, imageId, position)}
-                thumbUrl={(imageId) => bookImageThumbUrl(savedBookId, imageId)}
-                fullUrl={(imageId) => bookImageFullUrl(savedBookId, imageId)}
-                onChanged={() => queryClient.invalidateQueries({ queryKey: ['book', savedBookId] })}
+                queryKey={['wish-list-entry-images', wishListId, savedEntryId]}
+                listImages={() => listWishListEntryImages(wishListId, savedEntryId)}
+                deleteImage={(imageId) => deleteWishListEntryImage(wishListId, savedEntryId, imageId)}
+                reorderImage={(imageId, position) =>
+                  reorderWishListEntryImage(wishListId, savedEntryId, imageId, position)
+                }
+                thumbUrl={(imageId) => wishListEntryImageThumbUrl(wishListId, savedEntryId, imageId)}
+                fullUrl={(imageId) => wishListEntryImageFullUrl(wishListId, savedEntryId, imageId)}
+                onChanged={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: ['wish-list-entry', wishListId, savedEntryId],
+                  })
+                }
                 canEdit
               />
             </div>

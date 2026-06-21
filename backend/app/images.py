@@ -96,3 +96,21 @@ def thumb_image_path(book_id: int, image_id: int) -> Path:
 
 def delete_book_image_directory(book_id: int) -> None:
     shutil.rmtree(book_image_dir(book_id), ignore_errors=True)
+
+
+def wish_list_entry_image_dir(entry_id: int) -> Path:
+    # Nested under a distinct subdirectory so entry IDs never collide with
+    # book IDs in the same path namespace -- both are autoincrementing from 1.
+    return Path(settings.images_dir) / "wishlist_entries" / str(entry_id)
+
+
+def wish_list_entry_full_image_path(entry_id: int, image_id: int) -> Path:
+    return wish_list_entry_image_dir(entry_id) / f"{image_id}_full.jpg"
+
+
+def wish_list_entry_thumb_image_path(entry_id: int, image_id: int) -> Path:
+    return wish_list_entry_image_dir(entry_id) / f"{image_id}_thumb.jpg"
+
+
+def delete_wish_list_entry_image_directory(entry_id: int) -> None:
+    shutil.rmtree(wish_list_entry_image_dir(entry_id), ignore_errors=True)

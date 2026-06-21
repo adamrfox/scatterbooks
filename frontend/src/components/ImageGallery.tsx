@@ -1,41 +1,50 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  bookImageFullUrl,
-  bookImageThumbUrl,
-  deleteBookImage,
-  listBookImages,
-  reorderBookImage,
-} from '../api/images'
-import type { BookImage } from '../types'
 
-interface ImageGalleryProps {
-  bookId: number
-  canEdit: boolean
+interface GalleryImage {
+  id: number
+  position: number
 }
 
-export function ImageGallery({ bookId, canEdit }: ImageGalleryProps) {
-  const queryClient = useQueryClient()
-  const [lightboxImage, setLightboxImage] = useState<BookImage | null>(null)
+interface ImageGalleryProps {
+  queryKey: unknown[]
+  listImages: () => Promise<GalleryImage[]>
+  deleteImage: (imageId: number) => Promise<void>
+  reorderImage: (imageId: number, position: number) => Promise<unknown>
+  thumbUrl: (imageId: number) => string
+  fullUrl: (imageId: number) => string
+  canEdit: boolean
+  onChanged?: () => void
+}
 
-  const { data: images = [], isLoading } = useQuery({
-    queryKey: ['book-images', bookId],
-    queryFn: () => listBookImages(bookId),
-  })
+export function ImageGallery({
+  queryKey,
+  listImages,
+  deleteImage,
+  reorderImage,
+  thumbUrl,
+  fullUrl,
+  canEdit,
+  onChanged,
+}: ImageGalleryProps) {
+  const queryClient = useQueryClient()
+  const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null)
+
+  const { data: images = [], isLoading } = useQuery({ queryKey, queryFn: listImages })
 
   function invalidate() {
-    queryClient.invalidateQueries({ queryKey: ['book-images', bookId] })
-    queryClient.invalidateQueries({ queryKey: ['book', bookId] })
+    queryClient.invalidateQueries({ queryKey })
+    onChanged?.()
   }
 
   const deleteMutation = useMutation({
-    mutationFn: (imageId: number) => deleteBookImage(bookId, imageId),
+    mutationFn: (imageId: number) => deleteImage(imageId),
     onSuccess: invalidate,
   })
 
   const reorderMutation = useMutation({
     mutationFn: ({ imageId, position }: { imageId: number; position: number }) =>
-      reorderBookImage(bookId, imageId, position),
+      reorderImage(imageId, position),
     onSuccess: invalidate,
   })
 
@@ -63,11 +72,7 @@ export function ImageGallery({ bookId, canEdit }: ImageGalleryProps) {
               onClick={() => setLightboxImage(image)}
               className="block aspect-square w-full overflow-hidden rounded-md bg-gray-100"
             >
-              <img
-                src={bookImageThumbUrl(bookId, image.id)}
-                alt=""
-                className="h-full w-full object-cover"
-              />
+              <img src={thumbUrl(image.id)} alt="" className="h-full w-full object-cover" />
             </button>
             {canEdit && (
               <div className="mt-1 flex items-center justify-between text-xs">
@@ -107,11 +112,7 @@ export function ImageGallery({ bookId, canEdit }: ImageGalleryProps) {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightboxImage(null)}
         >
-          <img
-            src={bookImageFullUrl(bookId, lightboxImage.id)}
-            alt=""
-            className="max-h-full max-w-full rounded-md"
-          />
+          <img src={fullUrl(lightboxImage.id)} alt="" className="max-h-full max-w-full rounded-md" />
         </div>
       )}
     </>
