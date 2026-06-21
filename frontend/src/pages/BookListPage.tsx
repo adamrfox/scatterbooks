@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { listBooks } from '../api/books'
@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { roleAtLeast } from '../types'
 
+const PAGE_SIZE = 50
+
 export function BookListPage() {
   const { user } = useAuth()
   const canEdit = !!user && roleAtLeast(user.role, 'librarian')
@@ -17,26 +19,42 @@ export function BookListPage() {
   const [q, setQ] = useState('')
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [editionId, setEditionId] = useState<number | null>(null)
+  const [page, setPage] = useState(0)
   const debouncedQ = useDebouncedValue(q, 300)
 
   const hasActiveFilters = debouncedQ.trim() !== '' || categoryId !== null || editionId !== null
+
+  // Changing the search/filters makes the current page number meaningless --
+  // jump back to the first page rather than risk landing on an empty one.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    setPage(0)
+  }, [debouncedQ, categoryId, editionId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: listCategories })
   const { data: editions = [] } = useQuery({ queryKey: ['editions'], queryFn: listEditions })
 
   const {
-    data: books = [],
+    data: rawBooks = [],
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['books', { q: debouncedQ, categoryId, editionId }],
+    queryKey: ['books', { q: debouncedQ, categoryId, editionId, page }],
     queryFn: () =>
       listBooks({
         q: debouncedQ.trim() || undefined,
         category_id: categoryId ?? undefined,
         edition_id: editionId ?? undefined,
+        // Ask for one extra book -- if it comes back, there's a next page.
+        // Avoids needing a separate total-count endpoint just for paging.
+        limit: PAGE_SIZE + 1,
+        offset: page * PAGE_SIZE,
       }),
   })
+
+  const hasNextPage = rawBooks.length > PAGE_SIZE
+  const books = rawBooks.slice(0, PAGE_SIZE)
 
   function clearFilters() {
     setQ('')
@@ -90,6 +108,28 @@ export function BookListPage() {
           <BookCard key={book.id} book={book} />
         ))}
       </div>
+
+      {(page > 0 || hasNextPage) && (
+        <div className="mt-4 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-500">Page {page + 1}</span>
+          <button
+            type="button"
+            disabled={!hasNextPage}
+            onClick={() => setPage((p) => p + 1)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   )
 }
