@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { AuthProvider } from './context/AuthContext'
+import { getPublicSettings } from './api/settings'
 import { RoleGuard } from './components/RoleGuard'
 import { AppShell } from './components/AppShell'
 import { LoginPage } from './pages/LoginPage'
@@ -23,9 +25,22 @@ const queryClient = new QueryClient({
   },
 })
 
+function TitleSync() {
+  const { data } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: getPublicSettings,
+    staleTime: 5 * 60 * 1000,
+  })
+  useEffect(() => {
+    if (data?.library_name) document.title = data.library_name
+  }, [data?.library_name])
+  return null
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <TitleSync />
       <AuthProvider>
         <BrowserRouter>
           <Routes>
