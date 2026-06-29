@@ -11,12 +11,16 @@ SINGLETON_ID = 1
 KeySource = Literal["database", "environment", "none"]
 
 
+DEFAULT_LIBRARY_NAME = "scatterbooks"
+
+
 class AppSettings(Base):
     __tablename__ = "app_settings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     google_books_api_key: Mapped[str | None] = mapped_column(String(255))
     anthropic_api_key: Mapped[str | None] = mapped_column(String(255))
+    library_name: Mapped[str | None] = mapped_column(String(255))
 
 
 def get_app_settings(db: Session) -> AppSettings:
@@ -49,3 +53,8 @@ def resolve_anthropic_api_key(db: Session) -> tuple[str | None, KeySource]:
     """Database value wins; falls back to the ANTHROPIC_API_KEY env var."""
     row = get_app_settings(db)
     return _resolve(row.anthropic_api_key, env_settings.anthropic_api_key)
+
+
+def get_library_name(db: Session) -> str:
+    row = get_app_settings(db)
+    return row.library_name or DEFAULT_LIBRARY_NAME

@@ -6,10 +6,11 @@ from app.deps import require_admin
 from app.models import User
 from app.models.app_settings import (
     get_app_settings,
+    get_library_name,
     resolve_anthropic_api_key,
     resolve_google_books_api_key,
 )
-from app.schemas.settings import AppSettingsOut, AppSettingsUpdate
+from app.schemas.settings import AppSettingsOut, AppSettingsUpdate, PublicSettingsOut
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -18,6 +19,7 @@ def _to_out(db: DBSession) -> AppSettingsOut:
     google_books_key, google_books_source = resolve_google_books_api_key(db)
     anthropic_key, anthropic_source = resolve_anthropic_api_key(db)
     return AppSettingsOut(
+        library_name=get_library_name(db),
         google_books_api_key_configured=google_books_key is not None,
         google_books_api_key_source=google_books_source,
         anthropic_api_key_configured=anthropic_key is not None,
@@ -45,5 +47,12 @@ def update_settings(
         row.google_books_api_key = updates["google_books_api_key"] or None
     if "anthropic_api_key" in updates:
         row.anthropic_api_key = updates["anthropic_api_key"] or None
+    if "library_name" in updates:
+        row.library_name = updates["library_name"] or None
     db.commit()
     return _to_out(db)
+
+
+@router.get("/public", response_model=PublicSettingsOut)
+def get_public_settings(db: DBSession = Depends(get_db)) -> PublicSettingsOut:
+    return PublicSettingsOut(library_name=get_library_name(db))

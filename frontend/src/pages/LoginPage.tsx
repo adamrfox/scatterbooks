@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
+import { getPublicSettings } from '../api/settings'
 
 export function LoginPage() {
   const { user, login, loginError } = useAuth()
@@ -8,6 +10,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: getPublicSettings,
+    staleTime: 5 * 60 * 1000,
+  })
+  const libraryName = publicSettings?.library_name ?? 'scatterbooks'
 
   if (user) {
     return <Navigate to="/" replace />
@@ -29,7 +37,7 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">
-        <h1 className="mb-6 text-center text-2xl font-semibold text-gray-900">scatterbooks</h1>
+        <h1 className="mb-6 text-center text-2xl font-semibold text-gray-900">{libraryName}</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700">

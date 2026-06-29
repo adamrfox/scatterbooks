@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
+import { getPublicSettings } from '../api/settings'
 import { roleAtLeast, type Role } from '../types'
 
 interface NavItem {
@@ -20,6 +22,12 @@ const NAV_ITEMS: NavItem[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: getPublicSettings,
+    staleTime: 5 * 60 * 1000,
+  })
+  const libraryName = publicSettings?.library_name ?? 'scatterbooks'
 
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.minRole || (user && roleAtLeast(user.role, item.minRole)),
@@ -30,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-6">
-            <span className="text-lg font-semibold text-gray-900">scatterbooks</span>
+            <span className="text-lg font-semibold text-gray-900">{libraryName}</span>
             <nav className="hidden gap-4 md:flex">
               {visibleItems.map((item) => (
                 <Link
