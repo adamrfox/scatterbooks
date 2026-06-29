@@ -12,7 +12,7 @@
 #   3. Run once manually to confirm it works
 #   4. Add to cron: 0 3 * * * /path/to/scatterbooks/scripts/backup.sh --env /path/to/scatterbooks/scripts/backup.env
 #
-# Requirements: docker, rclone (installed automatically if missing), sqlite3
+# Requirements: docker, rclone (installed automatically if missing)
 
 set -euo pipefail
 
@@ -62,12 +62,6 @@ require_rclone() {
   fi
 }
 
-require_sqlite3() {
-  if ! command -v sqlite3 &>/dev/null; then
-    log "sqlite3 not found -- installing via apt..."
-    apt-get install -y -q sqlite3
-  fi
-}
 
 cleanup() {
   if [[ -n "${WORK_DIR:-}" && -d "$WORK_DIR" ]]; then
@@ -80,7 +74,6 @@ trap cleanup EXIT
 # Main
 # ---------------------------------------------------------------------------
 require_rclone
-require_sqlite3
 
 TIMESTAMP=$(date '+%Y-%m-%dT%H-%M-%S')
 WORK_DIR=$(mktemp -d)
@@ -92,9 +85,17 @@ log "Starting backup (timestamp: $TIMESTAMP)"
 log "Backing up database..."
 DB_BACKUP="scatterbooks-${TIMESTAMP}.db"
 
-# sqlite3 .backup is safe under concurrent writes (uses the online backup API)
-docker exec "$CONTAINER_NAME" \
-  sqlite3 /data/scatterbooks.db ".backup /data/${DB_BACKUP}"
+# Python's sqlite3.Connection.backup() uses the same safe online backup API
+# as sqlite3 .backup -- safe under concurrent writes. Python is always
+# present in the container; sqlite3 the CLI is not.
+docker exec "$CONTAINER_NAME" python3 -c "
+import sqlite3
+src = sqlite3.connect('/data/scatterbooks.db')
+dst = sqlite3.connect('/data/${DB_BACKUP}')
+src.backup(dst)
+dst.close()
+src.close()
+"
 
 docker cp "${CONTAINER_NAME}:/data/${DB_BACKUP}" "${WORK_DIR}/${DB_BACKUP}"
 
