@@ -4,6 +4,7 @@ export type KeySource = 'database' | 'environment' | 'none'
 
 export interface PublicSettings {
   library_name: string
+  anthropic_api_key_configured: boolean
 }
 
 export interface AppSettings extends PublicSettings {

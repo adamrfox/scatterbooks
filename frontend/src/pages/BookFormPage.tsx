@@ -12,7 +12,7 @@ import {
   reorderBookImage,
   uploadBookImage,
 } from '../api/images'
-import { getSettings } from '../api/settings'
+import { getPublicSettings } from '../api/settings'
 import { ApiError } from '../api/client'
 import { ComboboxWithAdd } from '../components/ComboboxWithAdd'
 import { IdentifyFromPhotoButton } from '../components/IdentifyFromPhotoButton'
@@ -64,7 +64,7 @@ export function BookFormPage() {
 
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: listCategories })
   const { data: editions = [] } = useQuery({ queryKey: ['editions'], queryFn: listEditions })
-  const { data: appSettings } = useQuery({ queryKey: ['settings'], queryFn: getSettings })
+  const { data: appSettings } = useQuery({ queryKey: ['public-settings'], queryFn: getPublicSettings, staleTime: 5 * 60 * 1000 })
 
   const { data: existingImages = [] } = useQuery({
     queryKey: ['book-images', savedBookId],

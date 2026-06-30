@@ -7,6 +7,7 @@ KeySource = Literal["database", "environment", "none"]
 
 class PublicSettingsOut(BaseModel):
     library_name: str
+    anthropic_api_key_configured: bool
 
 
 class AppSettingsOut(BaseModel):

@@ -55,4 +55,8 @@ def update_settings(
 
 @router.get("/public", response_model=PublicSettingsOut)
 def get_public_settings(db: DBSession = Depends(get_db)) -> PublicSettingsOut:
-    return PublicSettingsOut(library_name=get_library_name(db))
+    anthropic_key, _ = resolve_anthropic_api_key(db)
+    return PublicSettingsOut(
+        library_name=get_library_name(db),
+        anthropic_api_key_configured=anthropic_key is not None,
+    )
