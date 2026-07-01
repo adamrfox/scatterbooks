@@ -43,6 +43,7 @@ fi
 CONTAINER_NAME="${CONTAINER_NAME:-scatterbooks-scatterbooks-1}"
 LOCAL_BACKUP_DIR="${LOCAL_BACKUP_DIR:-/var/backups/scatterbooks}"
 KEEP_LOCAL_DAYS="${KEEP_LOCAL_DAYS:-7}"
+KEEP_B2_DAYS="${KEEP_B2_DAYS:-30}"  # 0 = keep forever
 
 # B2 credentials — must be set in env file or environment
 : "${B2_KEY_ID:?B2_KEY_ID is required}"
@@ -121,14 +122,25 @@ log "Images backup: ${WORK_DIR}/${IMAGES_ARCHIVE} ($(du -sh "${WORK_DIR}/${IMAGE
 log "Uploading to B2 bucket: ${B2_BUCKET}/${B2_PATH}/"
 
 # Pass credentials via environment variables so nothing hits the filesystem
-RCLONE_CONFIG_B2_TYPE=b2 \
-RCLONE_CONFIG_B2_ACCOUNT="$B2_KEY_ID" \
-RCLONE_CONFIG_B2_KEY="$B2_APPLICATION_KEY" \
-  rclone copy "$WORK_DIR/" "b2:${B2_BUCKET}/${B2_PATH}/" \
-    --progress \
-    --transfers 2
+rclone_b2() {
+  RCLONE_CONFIG_B2_TYPE=b2 \
+  RCLONE_CONFIG_B2_ACCOUNT="$B2_KEY_ID" \
+  RCLONE_CONFIG_B2_KEY="$B2_APPLICATION_KEY" \
+    rclone "$@"
+}
+
+rclone_b2 copy "$WORK_DIR/" "b2:${B2_BUCKET}/${B2_PATH}/" \
+  --progress \
+  --transfers 2
 
 log "Upload complete"
+
+# --- Prune old B2 backups ---------------------------------------------------
+if [[ "$KEEP_B2_DAYS" -gt 0 ]]; then
+  log "Pruning B2 backups older than ${KEEP_B2_DAYS} days..."
+  rclone_b2 delete "b2:${B2_BUCKET}/${B2_PATH}/" \
+    --min-age "${KEEP_B2_DAYS}d"
+fi
 
 # --- Copy to local archive (optional local retention) -----------------------
 cp "${WORK_DIR}/${DB_BACKUP}" "$LOCAL_BACKUP_DIR/"
